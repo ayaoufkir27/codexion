@@ -1,0 +1,54 @@
+#ifndef CODEXION_H
+#define CODEXION_H
+
+#include <pthread.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+
+#define COMPILING 0
+#define DEBUGGING 1
+#define REFACTORING 2
+
+typedef struct s_simulation t_simulation;
+
+typedef struct s_dongle
+{
+	int id;
+	int cooldown; // no
+	pthread_mutex_t mutex;
+} t_dongle;
+
+typedef struct s_coder
+{
+	int id;
+	int state; // 0/1/2
+	t_dongle *left;
+	t_dongle *right;
+	pthread_t thread;
+	t_simulation *sim;
+	// int dongle_state;
+} t_coder;
+
+typedef struct s_simulation
+{
+	int number_of_coders;
+	int time_to_burnout;
+	int time_to_compile;
+	int time_to_debug;
+	int time_to_refactor;
+	int number_of_compiles_required;
+	int dongle_cooldown;
+	char *scheduler;
+
+	t_coder *coders;
+	t_dongle *dongles;
+} t_simulation;
+
+int parse_args(t_simulation *sim, char **av);
+void free_simulation(t_simulation *sim);
+int init_coders(t_simulation *sim);
+int init_dongles(t_simulation *sim);
+
+#endif
