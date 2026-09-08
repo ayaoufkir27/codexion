@@ -16,20 +16,31 @@ typedef struct s_simulation t_simulation;
 typedef struct s_dongle
 {
 	int id;
-	int cooldown; // no
+	// int cooldown; // no
 	pthread_mutex_t mutex;
+	pthread_cond_t cond; //var condition for...
 } t_dongle;
 
 typedef struct s_coder
 {
 	int id;
-	int state; // 0/1/2
+	// int state; // 0/1/2
 	t_dongle *left;
 	t_dongle *right;
 	pthread_t thread;
 	t_simulation *sim;
-	// int dongle_state;
+	long request_time;
+	long last_compile_start;
+	long deadline;
 } t_coder;
+
+typedef struct s_queue
+{
+	t_coder **heap;
+	int size;
+	int capacity;
+} t_queue;
+
 
 typedef struct s_simulation
 {
@@ -44,6 +55,7 @@ typedef struct s_simulation
 
 	t_coder *coders;
 	t_dongle *dongles;
+	t_queue queue;
 } t_simulation;
 
 int parse_args(t_simulation *sim, char **av);

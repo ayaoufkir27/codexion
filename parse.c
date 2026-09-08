@@ -2,6 +2,13 @@
 
 void free_simulation(t_simulation *sim)
 {
+    // int i = 0;
+
+    // while (i < sim->number_of_coders)
+    // {
+    //     pthread_mutex_destroy(&sim->dongles[i].mutex);
+    //     i++;
+    // }
     free(sim->coders);
     free(sim->dongles);
 }
@@ -68,6 +75,35 @@ int init_dongles(t_simulation *sim)
     return 0;
 }
 
+int init_queue(t_simulation *sim)
+{
+    sim->queue.capacity = sim->number_of_coders;
+    sim->queue.size = 0;
+
+    sim->queue.heap = malloc(sizeof(t_coder) * sim->queue.capacity);
+    if (!sim->queue.heap)
+        return 1;
+
+    return 0;
+}
+
+void request_dongles(t_coder *coder)
+{
+    pthread_mutex_lock(&coder->left->mutex);
+    printf("Coder %d took left dongle id: %d\n", coder->id, coder->left->id);
+
+    pthread_mutex_lock(&coder->right->mutex);
+    printf("Coder %d took right dongle id: %d\n", coder->id, coder->right->id);
+}
+void release_dongles(t_coder *coder)
+{
+    pthread_mutex_unlock(&coder->left->mutex);
+    printf("Coder %d released left dongle %d\n", coder->id, coder->left->id);
+
+    pthread_mutex_unlock(&coder->right->mutex);
+    printf("Coder %d released right dongle %d\n", coder->id, coder->right->id);
+}
+
 void *coder_routine(void *arg)
 {
     t_coder *coder = (t_coder *)arg;
@@ -75,8 +111,12 @@ void *coder_routine(void *arg)
     int i = 0;
     while (i < coder->sim->number_of_compiles_required)
     {
+        request_dongles(coder);
+
         printf("Coder %d is compiling\n", coder->id);
         usleep(coder->sim->time_to_compile * 1000);
+
+        release_dongles(coder);
 
         printf("Coder %d is debugging\n", coder->id);
         usleep(coder->sim->time_to_debug * 1000);
@@ -123,6 +163,11 @@ int main(int ac, char **av)
     if (init_dongles(&sim))
         return 1;
     if (init_coders(&sim))
+    {
+        free_simulation(&sim);
+        return 1;
+    }
+    if (init_queue(&sim))
     {
         free_simulation(&sim);
         return 1;
