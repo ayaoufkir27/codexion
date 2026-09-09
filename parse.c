@@ -137,13 +137,43 @@ t_coder *queue_pop(t_queue *queue)
     queue->heap[0] = queue->heap[queue->size - 1];
     queue->size--;
 
-    int i = 0;
+    int i = 0, index = 0;
+	int left, right;
     t_coder *tmp;
-    while (i < queue->size)
-    {
-        queue->heap[i] = queue->heap[i + 1];
-        i++;
-    }
+    while (1)
+	{
+		left = (2 * i) + 1;
+		right = (2 * i) + 2;
+
+		if (left >= queue->size)
+			break;
+		printf("current coder C%d, ", queue->heap[i]->id);
+		printf("order %d\n", queue->heap[i]->request_order);
+
+		printf("left coder C%d, ", queue->heap[left]->id);
+		printf("order %d\n", queue->heap[left]->request_order);
+
+		if (right < queue->size && !priority_queue(queue->heap[left], queue->heap[right]))
+		{
+			printf("right coder C%d, ", queue->heap[right]->id);
+			printf("order %d\n", queue->heap[right]->request_order);
+			printf("RRRR chosen coder C%d, ", queue->heap[right]->id);
+			printf("order %d\n", queue->heap[right]->request_order);
+			index = right;
+		}
+		else
+		{
+			printf("LLLL chosen coder C%d, ", queue->heap[left]->id);
+			printf("order %d\n", queue->heap[left]->request_order);
+			index = left;
+		}
+		if (!priority_queue(queue->heap[index], queue->heap[i]))
+			break;
+		tmp = queue->heap[i];
+		queue->heap[i] = queue->heap[index];
+		queue->heap[index] = tmp;
+		i = index;
+	}
     return top;
 }
 
