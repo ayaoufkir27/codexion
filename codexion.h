@@ -24,14 +24,14 @@ typedef struct s_dongle
 typedef struct s_coder
 {
 	int id;
-	// int state; // 0/1/2
 	t_dongle *left;
 	t_dongle *right;
 	pthread_t thread;
 	t_simulation *sim;
-	long request_time;
+	// long request_time;
 	long last_compile_start;
 	long deadline;
+	int request_order;
 } t_coder;
 
 typedef struct s_queue
