@@ -68,6 +68,7 @@ int init_dongles(t_simulation *sim)
     while (i < num)
     {
         sim->dongles[i].id = i + 1;
+        sim->dongles[i].available = 1;
         if (pthread_mutex_init(&sim->dongles[i].mutex, NULL) != 0)
             return 1;
         i++;
@@ -90,17 +91,21 @@ int init_queue(t_simulation *sim)
 void request_dongles(t_coder *coder)
 {
     pthread_mutex_lock(&coder->left->mutex);
+    coder->left->available = 0;
     printf("Coder %d took left dongle id: %d\n", coder->id, coder->left->id);
 
     pthread_mutex_lock(&coder->right->mutex);
+    coder->right->available = 0;
     printf("Coder %d took right dongle id: %d\n", coder->id, coder->right->id);
 }
 void release_dongles(t_coder *coder)
 {
     pthread_mutex_unlock(&coder->left->mutex);
+    coder->left->available = 1;
     printf("Coder %d released left dongle %d\n", coder->id, coder->left->id);
 
     pthread_mutex_unlock(&coder->right->mutex);
+    coder->right->available = 1;
     printf("Coder %d released right dongle %d\n", coder->id, coder->right->id);
 }
 
@@ -208,7 +213,9 @@ void *coder_routine(void *arg)
     int i = 0;
     while (i < coder->sim->number_of_compiles_required)
     {
-        request_dongles(coder);
+        queue_push(&coder->sim->queue, coder); // !!!!!
+        if (coder->left->available && coder->right->available)
+            request_dongles(coder);
 
         printf("Coder %d is compiling\n", coder->id);
         usleep(coder->sim->time_to_compile * 1000);
@@ -220,6 +227,8 @@ void *coder_routine(void *arg)
 
         printf("Coder %d is refactoring\n", coder->id);
         usleep(coder->sim->time_to_refactor * 1000);
+
+        // queue_pop(&coder->sim->queue);
 
         i++;
     }
@@ -269,13 +278,13 @@ int main(int ac, char **av)
         free_simulation(&sim);
         return 1;
     }
-    test_queue(&sim);
-    // if (create_coders(&sim))
-    // {
-    //     free_simulation(&sim);
-    //     return 1;
-    // }
-    // join_coders(&sim);
+    // test_queue(&sim);
+    if (create_coders(&sim))
+    {
+        free_simulation(&sim);
+        return 1;
+    }
+    join_coders(&sim);
     free_simulation(&sim);
     printf("program finished lol\n");
 }

@@ -16,9 +16,10 @@ typedef struct s_simulation t_simulation;
 typedef struct s_dongle
 {
 	int id;
-	// int cooldown; // no
+	int available; // 1 or 0
 	pthread_mutex_t mutex;
 	pthread_cond_t cond; //var condition for...
+	// int cooldown; // no
 } t_dongle;
 
 typedef struct s_coder
