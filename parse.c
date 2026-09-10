@@ -106,13 +106,13 @@ void request_dongles(t_coder *coder)
 }
 void release_dongles(t_coder *coder)
 {
-    pthread_mutex_unlock(&coder->left->mutex);
     coder->left->available = 1;
-    printf("Coder %d released left dongle %d\n", coder->id, coder->left->id);
+    pthread_mutex_unlock(&coder->left->mutex);
+    // printf("Coder %d released left dongle %d\n", coder->id, coder->left->id);
 
-    pthread_mutex_unlock(&coder->right->mutex);
     coder->right->available = 1;
-    printf("Coder %d released right dongle %d\n", coder->id, coder->right->id);
+    pthread_mutex_unlock(&coder->right->mutex);
+    // printf("Coder %d released right dongle %d\n", coder->id, coder->right->id);
 }
 
 int priority_queue(t_coder *a, t_coder *b)
@@ -158,24 +158,24 @@ t_coder *queue_pop(t_queue *queue)
 
 		if (left >= queue->size)
 			break;
-		printf("current coder C%d, ", queue->heap[i]->id);
-		printf("order %d\n", queue->heap[i]->request_order);
+		// printf("current coder C%d, ", queue->heap[i]->id);
+		// printf("order %d\n", queue->heap[i]->request_order);
 
-		printf("left coder C%d, ", queue->heap[left]->id);
-		printf("order %d\n", queue->heap[left]->request_order);
+		// printf("left coder C%d, ", queue->heap[left]->id);
+		// printf("order %d\n", queue->heap[left]->request_order);
 
 		if (right < queue->size && !priority_queue(queue->heap[left], queue->heap[right]))
 		{
-			printf("right coder C%d, ", queue->heap[right]->id);
-			printf("order %d\n", queue->heap[right]->request_order);
-			printf("RRRR chosen coder C%d, ", queue->heap[right]->id);
-			printf("order %d\n", queue->heap[right]->request_order);
+			// printf("right coder C%d, ", queue->heap[right]->id);
+			// printf("order %d\n", queue->heap[right]->request_order);
+			// printf("RRRR chosen coder C%d, ", queue->heap[right]->id);
+			// printf("order %d\n", queue->heap[right]->request_order);
 			index = right;
 		}
 		else
 		{
-			printf("LLLL chosen coder C%d, ", queue->heap[left]->id);
-			printf("order %d\n", queue->heap[left]->request_order);
+			// printf("LLLL chosen coder C%d, ", queue->heap[left]->id);
+			// printf("order %d\n", queue->heap[left]->request_order);
 			index = left;
 		}
 		if (!priority_queue(queue->heap[index], queue->heap[i]))
@@ -220,8 +220,10 @@ void *coder_routine(void *arg)
     while (i < coder->sim->number_of_compiles_required)
     {
         pthread_mutex_lock(&coder->sim->queue.mutex);
-        queue_push(&coder->sim->queue, coder); // !!!!!
-        while(coder != coder->sim->queue.heap[0] || !coder->left->available || !coder->right->available)
+        coder->request_order = coder->sim->next_request_order;
+        coder->sim->next_request_order++;
+        queue_push(&coder->sim->queue, coder);
+        while(coder != coder->sim->queue.heap[0]) // || !coder->left->available || !coder->right->available
             pthread_cond_wait(&coder->sim->queue.cond,
                   &coder->sim->queue.mutex);
         pthread_mutex_unlock(&coder->sim->queue.mutex);
@@ -229,16 +231,19 @@ void *coder_routine(void *arg)
 
         printf("Coder %d is compiling\n", coder->id);
         usleep(coder->sim->time_to_compile * 1000);
-
+        
         release_dongles(coder);
 
+        pthread_mutex_lock(&coder->sim->queue.mutex);
+        queue_pop(&coder->sim->queue);
+        pthread_cond_broadcast(&coder->sim->queue.cond);
+        pthread_mutex_unlock(&coder->sim->queue.mutex);
+        
         printf("Coder %d is debugging\n", coder->id);
         usleep(coder->sim->time_to_debug * 1000);
 
         printf("Coder %d is refactoring\n", coder->id);
         usleep(coder->sim->time_to_refactor * 1000);
-
-        // queue_pop(&coder->sim->queue);
 
         i++;
     }
@@ -271,6 +276,7 @@ void join_coders(t_simulation *sim)
 int main(int ac, char **av)
 {
     t_simulation sim;
+    sim.next_request_order = 0; // change initializing place
 
     if (ac != 9)
         return 1;

@@ -58,6 +58,7 @@ typedef struct s_simulation
 	t_coder *coders;
 	t_dongle *dongles;
 	t_queue queue;
+	int next_request_order;
 } t_simulation;
 
 int parse_args(t_simulation *sim, char **av);
