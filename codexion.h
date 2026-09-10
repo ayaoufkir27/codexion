@@ -18,7 +18,6 @@ typedef struct s_dongle
 	int id;
 	int available; // 1 or 0
 	pthread_mutex_t mutex;
-	pthread_cond_t cond; //var condition for...
 	// int cooldown; // no
 } t_dongle;
 
@@ -40,6 +39,8 @@ typedef struct s_queue
 	t_coder **heap;
 	int size;
 	int capacity;
+	pthread_cond_t cond; // var condition for...
+	pthread_mutex_t mutex;
 } t_queue;
 
 

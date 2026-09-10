@@ -85,6 +85,12 @@ int init_queue(t_simulation *sim)
     if (!sim->queue.heap)
         return 1;
 
+    if (pthread_mutex_init(&sim->queue.mutex, NULL) != 0)
+    {
+        free(sim->queue.heap);
+        return 1;
+    }
+    pthread_cond_init(&sim->queue.cond, NULL); // free
     return 0;
 }
 
@@ -182,29 +188,29 @@ t_coder *queue_pop(t_queue *queue)
     return top;
 }
 
-void test_queue(t_simulation *sim)
-{
-    sim->coders[0].request_order = 2;
-    sim->coders[1].request_order = 0;
-    sim->coders[2].request_order = 3;
-    sim->coders[3].request_order = 1;
+// void test_queue(t_simulation *sim)
+// {
+//     sim->coders[0].request_order = 2;
+//     sim->coders[1].request_order = 0;
+//     sim->coders[2].request_order = 3;
+//     sim->coders[3].request_order = 1;
 
-    queue_push(&sim->queue, &sim->coders[0]);
-    queue_push(&sim->queue, &sim->coders[1]);
-    queue_push(&sim->queue, &sim->coders[2]);
-    queue_push(&sim->queue, &sim->coders[3]);
+//     queue_push(&sim->queue, &sim->coders[0]);
+//     queue_push(&sim->queue, &sim->coders[1]);
+//     queue_push(&sim->queue, &sim->coders[2]);
+//     queue_push(&sim->queue, &sim->coders[3]);
 
-    queue_pop(&sim->queue);
-    int i = 0;
-    while (i < sim->queue.size)
-    {
-        printf("heap[%d] = Coder %d (order %d)\n",
-            i,
-            sim->queue.heap[i]->id,
-            sim->queue.heap[i]->request_order);
-        i++;
-    }
-}
+//     queue_pop(&sim->queue);
+//     int i = 0;
+//     while (i < sim->queue.size)
+//     {
+//         printf("heap[%d] = Coder %d (order %d)\n",
+//             i,
+//             sim->queue.heap[i]->id,
+//             sim->queue.heap[i]->request_order);
+//         i++;
+//     }
+// }
 
 void *coder_routine(void *arg)
 {
@@ -213,9 +219,13 @@ void *coder_routine(void *arg)
     int i = 0;
     while (i < coder->sim->number_of_compiles_required)
     {
+        pthread_mutex_lock(&coder->sim->queue.mutex);
         queue_push(&coder->sim->queue, coder); // !!!!!
-        if (coder->left->available && coder->right->available)
-            request_dongles(coder);
+        while(coder != coder->sim->queue.heap[0] || !coder->left->available || !coder->right->available)
+            pthread_cond_wait(&coder->sim->queue.cond,
+                  &coder->sim->queue.mutex);
+        pthread_mutex_unlock(&coder->sim->queue.mutex);
+        request_dongles(coder);
 
         printf("Coder %d is compiling\n", coder->id);
         usleep(coder->sim->time_to_compile * 1000);
