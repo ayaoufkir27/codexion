@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
 
 #define COMPILING 0
 #define DEBUGGING 1
@@ -18,6 +19,7 @@ typedef struct s_dongle
 	int id;
 	int available; // 1 or 0
 	int cooldown;
+	long free_at;
 	// pthread_mutex_t mutex;
 } t_dongle;
 
@@ -58,6 +60,7 @@ typedef struct s_simulation
 	t_dongle *dongles;
 	t_queue queue;
 	int next_request_order;
+	long start;
 } t_simulation;
 
 int parse_args(t_simulation *sim, char **av);

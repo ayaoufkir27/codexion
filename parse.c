@@ -2,13 +2,6 @@
 
 void free_simulation(t_simulation *sim)
 {
-    // int i = 0;
-
-    // while (i < sim->number_of_coders)
-    // {
-    //     pthread_mutex_destroy(&sim->dongles[i].mutex);
-    //     i++;
-    // }
     free(sim->coders);
     free(sim->dongles);
 }
@@ -30,6 +23,20 @@ int parse_args(t_simulation *sim, char **av)
     return 0;
 }
 
+long get_time_ms()
+{
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    return (time.tv_sec * 1000L + time.tv_usec / 1000L);
+}
+
+long elapsed_ms(t_simulation *sim)
+{
+    long start_time = get_time_ms();
+    printf("START TIME %ld\n", start_time);
+    return (get_time_ms() - sim->start);
+}
+
 int init_coders(t_simulation *sim)
 {
     int num = sim->number_of_coders;
@@ -42,7 +49,6 @@ int init_coders(t_simulation *sim)
     {
         sim->coders[i].id = i + 1;
         sim->coders[i].sim = sim;
-        // sim->coders[i].state = 0;
         sim->coders[i].left = &sim->dongles[i];
 
         if (i == sim->number_of_coders - 1)
@@ -69,9 +75,7 @@ int init_dongles(t_simulation *sim)
     {
         sim->dongles[i].id = i + 1;
         sim->dongles[i].available = 1;
-        // sim->dongles->free_at = 0;
-        // if (pthread_mutex_init(&sim->dongles[i].mutex, NULL) != 0)
-        //     return 1;
+        sim->dongles->free_at = 0;
         i++;
     }
     return 0;
@@ -97,27 +101,24 @@ int init_queue(t_simulation *sim)
 
 void request_dongles(t_coder *coder)
 {
-    // pthread_mutex_lock(&coder->left->mutex);
     coder->left->available = 0;
     printf("C%d TOOK left dongle id: %d\n", coder->id, coder->left->id);
 
-    // pthread_mutex_lock(&coder->right->mutex);
     coder->right->available = 0;
     printf("C%d TOOK right dongle id: %d\n", coder->id, coder->right->id);
 }
 
 void release_dongles(t_coder *coder)
 {
+    long now = elapsed_ms(coder->sim);
     coder->left->available = 1;
-    // pthread_mutex_unlock(&coder->left->mutex);
     printf("C%d RELEASED left dongle %d\n", coder->id, coder->left->id);
 
     coder->right->available = 1;
-    // pthread_mutex_unlock(&coder->right->mutex);
     printf("C%d RELEASED right dongle %d\n", coder->id, coder->right->id);
 
-    // coder->left->free_at = coder->left->cooldown; // +now?
-    // coder->right->free_at = coder->right->cooldown;
+    coder->left->free_at = coder->left->cooldown + now;
+    coder->right->free_at = coder->right->cooldown + now;
 }
 
 int priority_queue(t_coder *a, t_coder *b)
@@ -129,7 +130,10 @@ int aquire_dongles(t_coder *coder, t_simulation *sim)
 {
     int i = 0;
     t_coder *other;
-    if (!coder->left->available || !coder->right->available)
+    long now = elapsed_ms(sim);
+    if (!coder->left->available || now < coder->left->free_at)
+        return 0;
+    if (!coder->right->available || now < coder->right->free_at)
         return 0;
 
     while (i < sim->queue.size)
@@ -237,7 +241,6 @@ void queue_remove(t_queue *queue, t_coder *coder)
 void *coder_routine(void *arg)
 {
     t_coder *coder = (t_coder *)arg;
-    // printf("Coder %d is running\n", coder->id);
     int i = 0;
     while (i < coder->sim->number_of_compiles_required)
     {
@@ -321,6 +324,7 @@ int main(int ac, char **av)
         return 1;
     }
     // test_queue(&sim);
+    sim.start = get_time_ms();
     if (create_coders(&sim))
     {
         free_simulation(&sim);
