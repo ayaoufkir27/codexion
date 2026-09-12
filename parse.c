@@ -69,8 +69,9 @@ int init_dongles(t_simulation *sim)
     {
         sim->dongles[i].id = i + 1;
         sim->dongles[i].available = 1;
-        if (pthread_mutex_init(&sim->dongles[i].mutex, NULL) != 0)
-            return 1;
+        // sim->dongles->free_at = 0;
+        // if (pthread_mutex_init(&sim->dongles[i].mutex, NULL) != 0)
+        //     return 1;
         i++;
     }
     return 0;
@@ -96,28 +97,49 @@ int init_queue(t_simulation *sim)
 
 void request_dongles(t_coder *coder)
 {
-    pthread_mutex_lock(&coder->left->mutex);
+    // pthread_mutex_lock(&coder->left->mutex);
     coder->left->available = 0;
-    printf("Coder %d took left dongle id: %d\n", coder->id, coder->left->id);
+    printf("C%d TOOK left dongle id: %d\n", coder->id, coder->left->id);
 
-    pthread_mutex_lock(&coder->right->mutex);
+    // pthread_mutex_lock(&coder->right->mutex);
     coder->right->available = 0;
-    printf("Coder %d took right dongle id: %d\n", coder->id, coder->right->id);
+    printf("C%d TOOK right dongle id: %d\n", coder->id, coder->right->id);
 }
+
 void release_dongles(t_coder *coder)
 {
     coder->left->available = 1;
-    pthread_mutex_unlock(&coder->left->mutex);
-    // printf("Coder %d released left dongle %d\n", coder->id, coder->left->id);
+    // pthread_mutex_unlock(&coder->left->mutex);
+    printf("C%d RELEASED left dongle %d\n", coder->id, coder->left->id);
 
     coder->right->available = 1;
-    pthread_mutex_unlock(&coder->right->mutex);
-    // printf("Coder %d released right dongle %d\n", coder->id, coder->right->id);
+    // pthread_mutex_unlock(&coder->right->mutex);
+    printf("C%d RELEASED right dongle %d\n", coder->id, coder->right->id);
+
+    // coder->left->free_at = coder->left->cooldown; // +now?
+    // coder->right->free_at = coder->right->cooldown;
 }
 
 int priority_queue(t_coder *a, t_coder *b)
 {
     return (a->request_order < b->request_order);
+}
+
+int aquire_dongles(t_coder *coder, t_simulation *sim)
+{
+    int i = 0;
+    t_coder *other;
+    if (!coder->left->available || !coder->right->available)
+        return 0;
+
+    while (i < sim->queue.size)
+    {
+        other = sim->queue.heap[i];
+        if (coder != other && (coder->left == other->left || coder->right == other->right || coder->left == other->right || coder->right == other->left) && priority_queue(other, coder))
+            return 0;
+        i++;
+    }
+    return 1;
 }
 
 void queue_push(t_queue *queue, t_coder *coder)
@@ -142,50 +164,50 @@ void queue_push(t_queue *queue, t_coder *coder)
     }
 }
 
-t_coder *queue_pop(t_queue *queue)
+void queue_remove(t_queue *queue, t_coder *coder)
 {
-    t_coder *top = queue->heap[0];
-    queue->heap[0] = queue->heap[queue->size - 1];
+    int i = 0;
+    t_coder *tmp;
+
+    while (i < queue->size && queue->heap[i] != coder)
+        i++;
+    if (i == queue->size)
+        return;
+
+    queue->heap[i] = queue->heap[queue->size - 1];
     queue->size--;
 
-    int i = 0, index = 0;
-	int left, right;
-    t_coder *tmp;
+    while (i > 0)
+    {
+        int parent = (i - 1) / 2;
+        if (!priority_queue(queue->heap[i], queue->heap[parent]))
+            break;
+        tmp = queue->heap[i];
+        queue->heap[i] = queue->heap[parent];
+        queue->heap[parent] = tmp;
+
+        i = parent;
+    }
+
     while (1)
-	{
-		left = (2 * i) + 1;
-		right = (2 * i) + 2;
+    {
+        int left = 2 * i + 1;
+        int right = 2 * i + 2;
+        int best = i;
 
-		if (left >= queue->size)
-			break;
-		// printf("current coder C%d, ", queue->heap[i]->id);
-		// printf("order %d\n", queue->heap[i]->request_order);
+        if (left < queue->size && priority_queue(queue->heap[left], queue->heap[best]))
+            best = left;
+        if (right < queue->size && priority_queue(queue->heap[right], queue->heap[best]))
+            best = right;
+        if (best == i)
+            break;
+        
+        tmp = queue->heap[i];
+        queue->heap[i] = queue->heap[best];
+        queue->heap[best] = tmp;
 
-		// printf("left coder C%d, ", queue->heap[left]->id);
-		// printf("order %d\n", queue->heap[left]->request_order);
-
-		if (right < queue->size && !priority_queue(queue->heap[left], queue->heap[right]))
-		{
-			// printf("right coder C%d, ", queue->heap[right]->id);
-			// printf("order %d\n", queue->heap[right]->request_order);
-			// printf("RRRR chosen coder C%d, ", queue->heap[right]->id);
-			// printf("order %d\n", queue->heap[right]->request_order);
-			index = right;
-		}
-		else
-		{
-			// printf("LLLL chosen coder C%d, ", queue->heap[left]->id);
-			// printf("order %d\n", queue->heap[left]->request_order);
-			index = left;
-		}
-		if (!priority_queue(queue->heap[index], queue->heap[i]))
-			break;
-		tmp = queue->heap[i];
-		queue->heap[i] = queue->heap[index];
-		queue->heap[index] = tmp;
-		i = index;
-	}
-    return top;
+        i = best;
+    }
 }
 
 // void test_queue(t_simulation *sim)
@@ -222,20 +244,24 @@ void *coder_routine(void *arg)
         pthread_mutex_lock(&coder->sim->queue.mutex);
         coder->request_order = coder->sim->next_request_order;
         coder->sim->next_request_order++;
+        printf("[!] REQUEST ORDER %d\n", coder->request_order);
+        printf("[!] NEXT REQUEST ORDER %d\n", coder->sim->next_request_order);
         queue_push(&coder->sim->queue, coder);
-        while(coder != coder->sim->queue.heap[0]) // || !coder->left->available || !coder->right->available
+
+        while(!aquire_dongles(coder, coder->sim))
             pthread_cond_wait(&coder->sim->queue.cond,
                   &coder->sim->queue.mutex);
-        pthread_mutex_unlock(&coder->sim->queue.mutex);
+
         request_dongles(coder);
+        queue_remove(&coder->sim->queue, coder);
+        pthread_mutex_unlock(&coder->sim->queue.mutex);
 
         printf("Coder %d is compiling\n", coder->id);
         usleep(coder->sim->time_to_compile * 1000);
-        
-        release_dongles(coder);
 
         pthread_mutex_lock(&coder->sim->queue.mutex);
-        queue_pop(&coder->sim->queue);
+        release_dongles(coder);
+        // queue_pop(&coder->sim->queue);
         pthread_cond_broadcast(&coder->sim->queue.cond);
         pthread_mutex_unlock(&coder->sim->queue.mutex);
         
