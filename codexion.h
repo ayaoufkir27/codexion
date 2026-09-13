@@ -18,9 +18,8 @@ typedef struct s_dongle
 {
 	int id;
 	int available; // 1 or 0
-	int cooldown;
 	long free_at;
-	// pthread_mutex_t mutex;
+	pthread_mutex_t mutex;
 } t_dongle;
 
 typedef struct s_coder

@@ -32,8 +32,6 @@ long get_time_ms()
 
 long elapsed_ms(t_simulation *sim)
 {
-    long start_time = get_time_ms();
-    printf("START TIME %ld\n", start_time);
     return (get_time_ms() - sim->start);
 }
 
@@ -75,7 +73,9 @@ int init_dongles(t_simulation *sim)
     {
         sim->dongles[i].id = i + 1;
         sim->dongles[i].available = 1;
-        sim->dongles->free_at = 0;
+        if (pthread_mutex_init(&sim->dongles[i].mutex, NULL) != 0)
+            return 1;
+        sim->dongles[i].free_at = 0;
         i++;
     }
     return 0;
@@ -101,41 +101,62 @@ int init_queue(t_simulation *sim)
 
 void request_dongles(t_coder *coder)
 {
+    pthread_mutex_lock(&coder->left->mutex);
     coder->left->available = 0;
+    pthread_mutex_unlock(&coder->left->mutex);
     printf("C%d TOOK left dongle id: %d\n", coder->id, coder->left->id);
 
+    pthread_mutex_lock(&coder->right->mutex);
     coder->right->available = 0;
+    pthread_mutex_unlock(&coder->right->mutex);
     printf("C%d TOOK right dongle id: %d\n", coder->id, coder->right->id);
 }
 
 void release_dongles(t_coder *coder)
 {
     long now = elapsed_ms(coder->sim);
+    printf("TIME NOW: %ld\n", now);
+
+    pthread_mutex_lock(&coder->left->mutex);
     coder->left->available = 1;
+    coder->left->free_at = coder->sim->dongle_cooldown + now;
+    pthread_mutex_unlock(&coder->left->mutex);
     printf("C%d RELEASED left dongle %d\n", coder->id, coder->left->id);
 
+    pthread_mutex_lock(&coder->right->mutex);
     coder->right->available = 1;
+    coder->right->free_at = coder->sim->dongle_cooldown + now;
+    pthread_mutex_unlock(&coder->right->mutex);
     printf("C%d RELEASED right dongle %d\n", coder->id, coder->right->id);
 
-    coder->left->free_at = coder->left->cooldown + now;
-    coder->right->free_at = coder->right->cooldown + now;
 }
 
 int priority_queue(t_coder *a, t_coder *b)
 {
-    return (a->request_order < b->request_order);
+    if (strcmp(a->sim->scheduler, "fifo") == 0)
+        return (a->request_order < b->request_order);
+    return (a->deadline < b->deadline);
 }
 
 int aquire_dongles(t_coder *coder, t_simulation *sim)
 {
     int i = 0;
+    int allowed = 1;
     t_coder *other;
     long now = elapsed_ms(sim);
+    
+    pthread_mutex_lock(&coder->left->mutex);
     if (!coder->left->available || now < coder->left->free_at)
-        return 0;
-    if (!coder->right->available || now < coder->right->free_at)
-        return 0;
+        allowed = 0;
+    pthread_mutex_unlock(&coder->left->mutex);
 
+    pthread_mutex_lock(&coder->right->mutex);
+    if (!coder->right->available || now < coder->right->free_at)
+        allowed = 0;
+    pthread_mutex_unlock(&coder->right->mutex);
+
+    if (!allowed)
+        return 0;
     while (i < sim->queue.size)
     {
         other = sim->queue.heap[i];
@@ -238,22 +259,39 @@ void queue_remove(t_queue *queue, t_coder *coder)
 //     }
 // }
 
+void wait_short(pthread_cond_t *cond, pthread_mutex_t *mutex)
+{
+    struct timespec ts;
+    struct timeval now;
+
+    gettimeofday(&now, NULL);
+    ts.tv_sec = now.tv_sec;
+    ts.tv_nsec = (now.tv_usec + 5000) * 1000; // wake at least every 5ms
+    if (ts.tv_nsec >= 1000000000)
+    {
+        ts.tv_sec += 1;
+        ts.tv_nsec -= 1000000000;
+    }
+    pthread_cond_timedwait(cond, mutex, &ts);
+}
+
 void *coder_routine(void *arg)
 {
     t_coder *coder = (t_coder *)arg;
     int i = 0;
     while (i < coder->sim->number_of_compiles_required)
-    {
+    {            
         pthread_mutex_lock(&coder->sim->queue.mutex);
         coder->request_order = coder->sim->next_request_order;
         coder->sim->next_request_order++;
+        coder->deadline = elapsed_ms(coder->sim) + coder->sim->time_to_burnout;
         printf("[!] REQUEST ORDER %d\n", coder->request_order);
         printf("[!] NEXT REQUEST ORDER %d\n", coder->sim->next_request_order);
         queue_push(&coder->sim->queue, coder);
 
         while(!aquire_dongles(coder, coder->sim))
-            pthread_cond_wait(&coder->sim->queue.cond,
-                  &coder->sim->queue.mutex);
+            wait_short(&coder->sim->queue.cond, &coder->sim->queue.mutex);
+            // pthread_cond_wait(&coder->sim->queue.cond, &coder->sim->queue.mutex);
 
         request_dongles(coder);
         queue_remove(&coder->sim->queue, coder);
@@ -305,7 +343,7 @@ void join_coders(t_simulation *sim)
 int main(int ac, char **av)
 {
     t_simulation sim;
-    sim.next_request_order = 0; // change initializing place
+    sim.next_request_order = 1; // change initializing place
 
     if (ac != 9)
         return 1;
