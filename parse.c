@@ -48,6 +48,7 @@ int init_coders(t_simulation *sim)
         sim->coders[i].id = i + 1;
         sim->coders[i].sim = sim;
         sim->coders[i].left = &sim->dongles[i];
+        sim->coders[i].deadline = sim->time_to_burnout;
 
         if (i == sim->number_of_coders - 1)
             sim->coders[i].right = &sim->dongles[0];
@@ -99,43 +100,47 @@ int init_queue(t_simulation *sim)
     return 0;
 }
 
-void request_dongles(t_coder *coder)
+void request_dongles(t_coder *coder, long now)
 {
     pthread_mutex_lock(&coder->left->mutex);
     coder->left->available = 0;
     pthread_mutex_unlock(&coder->left->mutex);
-    printf("C%d TOOK left dongle id: %d\n", coder->id, coder->left->id);
+    printf("%ld %d has taken a dongle\n", now, coder->id);
 
     pthread_mutex_lock(&coder->right->mutex);
     coder->right->available = 0;
     pthread_mutex_unlock(&coder->right->mutex);
-    printf("C%d TOOK right dongle id: %d\n", coder->id, coder->right->id);
+    printf("%ld %d has taken a dongle\n", now,coder->id);
 }
 
 void release_dongles(t_coder *coder)
 {
     long now = elapsed_ms(coder->sim);
-    printf("TIME NOW: %ld\n", now);
+    // printf("TIME NOW: %ld\n", now);
 
     pthread_mutex_lock(&coder->left->mutex);
     coder->left->available = 1;
     coder->left->free_at = coder->sim->dongle_cooldown + now;
     pthread_mutex_unlock(&coder->left->mutex);
-    printf("C%d RELEASED left dongle %d\n", coder->id, coder->left->id);
+    // printf("C%d RELEASED left dongle %d\n", coder->id, coder->left->id);
 
     pthread_mutex_lock(&coder->right->mutex);
     coder->right->available = 1;
     coder->right->free_at = coder->sim->dongle_cooldown + now;
     pthread_mutex_unlock(&coder->right->mutex);
-    printf("C%d RELEASED right dongle %d\n", coder->id, coder->right->id);
+    // printf("C%d RELEASED right dongle %d\n", coder->id, coder->right->id);
 
 }
 
 int priority_queue(t_coder *a, t_coder *b)
 {
-    if (strcmp(a->sim->scheduler, "fifo") == 0)
+    if (strcmp(a->sim->scheduler, "edf") == 0)
+    {
+        if (a->deadline != b->deadline)
+            return (a->deadline < b->deadline);
         return (a->request_order < b->request_order);
-    return (a->deadline < b->deadline);
+    }
+    return (a->request_order < b->request_order);
 }
 
 int aquire_dongles(t_coder *coder, t_simulation *sim)
@@ -235,30 +240,6 @@ void queue_remove(t_queue *queue, t_coder *coder)
     }
 }
 
-// void test_queue(t_simulation *sim)
-// {
-//     sim->coders[0].request_order = 2;
-//     sim->coders[1].request_order = 0;
-//     sim->coders[2].request_order = 3;
-//     sim->coders[3].request_order = 1;
-
-//     queue_push(&sim->queue, &sim->coders[0]);
-//     queue_push(&sim->queue, &sim->coders[1]);
-//     queue_push(&sim->queue, &sim->coders[2]);
-//     queue_push(&sim->queue, &sim->coders[3]);
-
-//     queue_pop(&sim->queue);
-//     int i = 0;
-//     while (i < sim->queue.size)
-//     {
-//         printf("heap[%d] = Coder %d (order %d)\n",
-//             i,
-//             sim->queue.heap[i]->id,
-//             sim->queue.heap[i]->request_order);
-//         i++;
-//     }
-// }
-
 void wait_short(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
     struct timespec ts;
@@ -275,41 +256,108 @@ void wait_short(pthread_cond_t *cond, pthread_mutex_t *mutex)
     pthread_cond_timedwait(cond, mutex, &ts);
 }
 
+void *monitor_routine(void *arg)
+{
+    t_simulation *sim = (t_simulation *)arg;
+    long now;
+    int i;
+    int stop;
+
+    while (1)
+    {
+        pthread_mutex_lock(&sim->queue.mutex);
+        stop = sim->stop;
+        if (!stop)
+        {
+            now = elapsed_ms(sim);
+            i = 0;
+            while(i < sim->number_of_coders)
+            {
+                if (now >= sim->coders[i].deadline)
+                {
+                    printf("%ld %d burned out\n", now, sim->coders[i].id);
+                    sim->stop = 1;
+                    pthread_cond_broadcast(&sim->queue.cond);
+                    break;
+                }
+                i++;
+            }
+        }
+        pthread_mutex_unlock(&sim->queue.mutex);
+        if (stop)
+            break;
+        usleep(1000);
+    }
+    return NULL;
+}
+
 void *coder_routine(void *arg)
 {
     t_coder *coder = (t_coder *)arg;
     int i = 0;
+    long now;
+    int stop;
+
     while (i < coder->sim->number_of_compiles_required)
-    {            
+    {        
         pthread_mutex_lock(&coder->sim->queue.mutex);
+        if (coder->sim->stop)
+        {
+            pthread_mutex_unlock(&coder->sim->queue.mutex);
+            break;
+        }
         coder->request_order = coder->sim->next_request_order;
         coder->sim->next_request_order++;
-        coder->deadline = elapsed_ms(coder->sim) + coder->sim->time_to_burnout;
-        printf("[!] REQUEST ORDER %d\n", coder->request_order);
-        printf("[!] NEXT REQUEST ORDER %d\n", coder->sim->next_request_order);
+        // printf("[!] REQUEST ORDER %d\n", coder->request_order);
+        // printf("[!] NEXT REQUEST ORDER %d\n", coder->sim->next_request_order);
         queue_push(&coder->sim->queue, coder);
-
-        while(!aquire_dongles(coder, coder->sim))
+        
+        while(!aquire_dongles(coder, coder->sim) && !coder->sim->stop)
             wait_short(&coder->sim->queue.cond, &coder->sim->queue.mutex);
-            // pthread_cond_wait(&coder->sim->queue.cond, &coder->sim->queue.mutex);
 
-        request_dongles(coder);
+        //check if for sim stop
+        if (coder->sim->stop)
+        {
+            queue_remove(&coder->sim->queue, coder);
+            pthread_mutex_unlock(&coder->sim->queue.mutex);
+            break;
+        }
+   
+        // printf("======= CODING ROUND %d=========\n", i + 1);
+        now = elapsed_ms(coder->sim);
+        request_dongles(coder, now);
         queue_remove(&coder->sim->queue, coder);
+        coder->deadline = elapsed_ms(coder->sim) + coder->sim->time_to_burnout;
         pthread_mutex_unlock(&coder->sim->queue.mutex);
-
-        printf("Coder %d is compiling\n", coder->id);
+        
+        now = elapsed_ms(coder->sim);
+        printf("%ld %d is compiling\n", now, coder->id);
+        // printf("=========== C%d DEADLINE: %ld\n", coder->id, coder->deadline);
+        // printf("=========== C%d DEADLINE: %ld\n", coder->id, coder->deadline);
         usleep(coder->sim->time_to_compile * 1000);
 
         pthread_mutex_lock(&coder->sim->queue.mutex);
         release_dongles(coder);
-        // queue_pop(&coder->sim->queue);
         pthread_cond_broadcast(&coder->sim->queue.cond);
         pthread_mutex_unlock(&coder->sim->queue.mutex);
+
+        pthread_mutex_lock(&coder->sim->queue.mutex);
+        stop = coder->sim->stop;
+        pthread_mutex_unlock(&coder->sim->queue.mutex);
+        if (stop)
+            break;
         
-        printf("Coder %d is debugging\n", coder->id);
+        now = elapsed_ms(coder->sim);
+        printf("%ld %d is debugging\n", now, coder->id);
         usleep(coder->sim->time_to_debug * 1000);
 
-        printf("Coder %d is refactoring\n", coder->id);
+        pthread_mutex_lock(&coder->sim->queue.mutex);
+        stop = coder->sim->stop;
+        pthread_mutex_unlock(&coder->sim->queue.mutex);
+        if (coder->sim->stop)
+            break;
+        now = elapsed_ms(coder->sim);
+        printf("%ld %d is refactoring\n", now, coder->id);
         usleep(coder->sim->time_to_refactor * 1000);
 
         i++;
@@ -323,27 +371,33 @@ int create_coders(t_simulation *sim)
     while (i < sim->number_of_coders)
     {
         if (pthread_create(&sim->coders[i].thread, NULL, coder_routine, &sim->coders[i]) != 0)
-            return 1;
+        return 1;
         i++;
     }
+    if (pthread_create(&sim->monitor, NULL, monitor_routine, sim) != 0)
+        return 1;
     return 0;
 }
 
 void join_coders(t_simulation *sim)
 {
     int i = 0;
-
     while (i < sim->number_of_coders)
     {
         pthread_join(sim->coders[i].thread, NULL);
         i++;
     }
+    pthread_mutex_lock(&sim->queue.mutex);
+    sim->stop = 1;
+    pthread_mutex_unlock(&sim->queue.mutex);
+    pthread_join(sim->monitor, NULL);
 }
 
 int main(int ac, char **av)
 {
     t_simulation sim;
     sim.next_request_order = 1; // change initializing place
+    sim.stop = 0;
 
     if (ac != 9)
         return 1;

@@ -8,10 +8,6 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define COMPILING 0
-#define DEBUGGING 1
-#define REFACTORING 2
-
 typedef struct s_simulation t_simulation;
 
 typedef struct s_dongle
@@ -29,7 +25,6 @@ typedef struct s_coder
 	t_dongle *right;
 	pthread_t thread;
 	t_simulation *sim;
-	long last_compile_start;
 	long deadline;
 	int request_order;
 } t_coder;
@@ -60,6 +55,8 @@ typedef struct s_simulation
 	t_queue queue;
 	int next_request_order;
 	long start;
+	pthread_t monitor;
+	int stop; // 0 1
 } t_simulation;
 
 int parse_args(t_simulation *sim, char **av);
