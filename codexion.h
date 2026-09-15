@@ -27,6 +27,7 @@ typedef struct s_coder
 	t_simulation *sim;
 	long deadline;
 	int request_order;
+	int done;
 } t_coder;
 
 typedef struct s_queue

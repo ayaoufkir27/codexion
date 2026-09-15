@@ -49,6 +49,7 @@ int init_coders(t_simulation *sim)
         sim->coders[i].sim = sim;
         sim->coders[i].left = &sim->dongles[i];
         sim->coders[i].deadline = sim->time_to_burnout;
+        sim->coders[i].done = 0;
 
         if (i == sim->number_of_coders - 1)
             sim->coders[i].right = &sim->dongles[0];
@@ -143,29 +144,42 @@ int priority_queue(t_coder *a, t_coder *b)
     return (a->request_order < b->request_order);
 }
 
+int is_dongle_free(t_dongle *d, long now)
+{
+    return (d->available && now >= d->free_at);
+}
+
 int aquire_dongles(t_coder *coder, t_simulation *sim)
 {
     int i = 0;
-    int allowed = 1;
+    // int allowed = 1;
     t_coder *other;
     long now = elapsed_ms(sim);
-    
-    pthread_mutex_lock(&coder->left->mutex);
-    if (!coder->left->available || now < coder->left->free_at)
-        allowed = 0;
-    pthread_mutex_unlock(&coder->left->mutex);
 
-    pthread_mutex_lock(&coder->right->mutex);
-    if (!coder->right->available || now < coder->right->free_at)
-        allowed = 0;
-    pthread_mutex_unlock(&coder->right->mutex);
+    // pthread_mutex_lock(&coder->left->mutex);
+    // if (!coder->left->available || now < coder->left->free_at)
+    //     allowed = 0;
+    // pthread_mutex_unlock(&coder->left->mutex);
 
-    if (!allowed)
+    // pthread_mutex_lock(&coder->right->mutex);
+    // if (!coder->right->available || now < coder->right->free_at)
+    //     allowed = 0;
+    // pthread_mutex_unlock(&coder->right->mutex);
+
+    // if (!allowed)
+    //     return 0;
+    if (coder->left == coder->right)
+        return 0;
+    if (!is_dongle_free(coder->left, now) || !is_dongle_free(coder->right, now))
         return 0;
     while (i < sim->queue.size)
     {
         other = sim->queue.heap[i];
-        if (coder != other && (coder->left == other->left || coder->right == other->right || coder->left == other->right || coder->right == other->left) && priority_queue(other, coder))
+        if (coder != other
+        && (coder->left == other->left || coder->right == other->right || coder->left == other->right || coder->right == other->left)
+        && is_dongle_free(other->left, now)
+        && is_dongle_free(other->right, now)
+        && priority_queue(other, coder))
             return 0;
         i++;
     }
@@ -273,7 +287,7 @@ void *monitor_routine(void *arg)
             i = 0;
             while(i < sim->number_of_coders)
             {
-                if (now >= sim->coders[i].deadline)
+                if (now >= sim->coders[i].deadline && !sim->coders[i].done)
                 {
                     printf("%ld %d burned out\n", now, sim->coders[i].id);
                     sim->stop = 1;
@@ -315,15 +329,14 @@ void *coder_routine(void *arg)
         while(!aquire_dongles(coder, coder->sim) && !coder->sim->stop)
             wait_short(&coder->sim->queue.cond, &coder->sim->queue.mutex);
 
-        //check if for sim stop
         if (coder->sim->stop)
         {
             queue_remove(&coder->sim->queue, coder);
             pthread_mutex_unlock(&coder->sim->queue.mutex);
             break;
         }
-   
-        // printf("======= CODING ROUND %d=========\n", i + 1);
+
+        printf("======= CODING ROUND %d=========\n", i + 1);
         now = elapsed_ms(coder->sim);
         request_dongles(coder, now);
         queue_remove(&coder->sim->queue, coder);
@@ -361,6 +374,8 @@ void *coder_routine(void *arg)
         usleep(coder->sim->time_to_refactor * 1000);
 
         i++;
+        if (i == coder->sim->number_of_compiles_required)
+            coder->done = 1;
     }
     return (NULL);
 }
@@ -388,7 +403,7 @@ void join_coders(t_simulation *sim)
         i++;
     }
     pthread_mutex_lock(&sim->queue.mutex);
-    sim->stop = 1;
+    sim->stop = 1; // 
     pthread_mutex_unlock(&sim->queue.mutex);
     pthread_join(sim->monitor, NULL);
 }
