@@ -149,7 +149,7 @@ int is_dongle_free(t_dongle *d, long now)
     return (d->available && now >= d->free_at);
 }
 
-int aquire_dongles(t_coder *coder, t_simulation *sim)
+int acquire_dongles(t_coder *coder, t_simulation *sim)
 {
     int i = 0;
     // int allowed = 1;
@@ -326,7 +326,7 @@ void *coder_routine(void *arg)
         // printf("[!] NEXT REQUEST ORDER %d\n", coder->sim->next_request_order);
         queue_push(&coder->sim->queue, coder);
         
-        while(!aquire_dongles(coder, coder->sim) && !coder->sim->stop)
+        while(!acquire_dongles(coder, coder->sim) && !coder->sim->stop)
             wait_short(&coder->sim->queue.cond, &coder->sim->queue.mutex);
 
         if (coder->sim->stop)
@@ -336,7 +336,7 @@ void *coder_routine(void *arg)
             break;
         }
 
-        printf("======= CODING ROUND %d=========\n", i + 1);
+        // printf("======= CODING ROUND %d=========\n", i + 1);
         now = elapsed_ms(coder->sim);
         request_dongles(coder, now);
         queue_remove(&coder->sim->queue, coder);
