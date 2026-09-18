@@ -6,11 +6,11 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 13:30:02 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/17 13:33:56 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/18 13:43:06 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "codexion.h"
+#include "../includes/codexion.h"
 
 void	free_simulation(t_simulation *sim)
 {

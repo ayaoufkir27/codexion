@@ -6,11 +6,11 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:03:55 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/17 18:15:44 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/18 11:53:40 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "codexion.h"
+#include "../includes/codexion.h"
 
 int	wait_for_dongles(t_coder *coder)
 {

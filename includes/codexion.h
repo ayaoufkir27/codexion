@@ -13,9 +13,9 @@ typedef struct s_simulation t_simulation;
 typedef struct s_dongle
 {
 	int id;
-	int available; // 1 or 0
+	int available;
 	long free_at;
-	pthread_mutex_t mutex;
+	pthread_mutex_t	mutex;
 } t_dongle;
 
 typedef struct s_coder
@@ -39,7 +39,6 @@ typedef struct s_queue
 	pthread_mutex_t mutex;
 } t_queue;
 
-
 typedef struct s_simulation
 {
 	int number_of_coders;
@@ -57,12 +56,32 @@ typedef struct s_simulation
 	int next_request_order;
 	long start;
 	pthread_t monitor;
-	int stop; // 0 1
+	int stop;
 } t_simulation;
 
-int parse_args(t_simulation *sim, char **av);
-void free_simulation(t_simulation *sim);
-int init_coders(t_simulation *sim);
+int	check_args(t_simulation *sim, char **av, int ac);
+int	parse_args(t_simulation *sim, char **av, int ac);
+void	free_simulation(t_simulation *sim);
+
+int	init_coders(t_simulation *sim);
 int init_dongles(t_simulation *sim);
+int	init_queue(t_simulation *sim);
+int create_coders(t_simulation *sim);
+void join_coders(t_simulation *sim);
+
+long	elapsed_ms(t_simulation *sim);
+long	get_time_ms();
+void	request_dongles(t_coder *coder, long now);
+void release_dongles(t_coder *coder);
+int	is_dongle_free(t_dongle *d, long now);
+int priority_queue(t_coder *a, t_coder *b);
+int	acquire_dongles(t_coder *coder, t_simulation *sim);
+
+void	queue_push(t_queue *queue, t_coder *coder);
+void	heapify_queue(t_queue *queue, int i);
+void	queue_remove(t_queue *queue, t_coder *coder);
+void	*monitor_routine(void *arg);
+void	wait_short(pthread_cond_t *cond, pthread_mutex_t *mutex);
+void *coder_routine(void *arg);
 
 #endif

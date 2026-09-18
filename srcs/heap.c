@@ -6,11 +6,11 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:20:16 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/17 16:09:03 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/18 11:53:17 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "codexion.h"
+#include "../includes/codexion.h"
 
 int	priority_queue(t_coder *a, t_coder *b)
 {

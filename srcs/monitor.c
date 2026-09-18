@@ -6,11 +6,11 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 13:25:46 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/17 16:00:20 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/18 11:53:32 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "codexion.h"
+#include "../includes/codexion.h"
 
 void	track_burnout(t_simulation *sim, long now)
 {
