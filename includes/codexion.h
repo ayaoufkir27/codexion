@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/19 12:38:29 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/19 12:40:07 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/19 15:01:51 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,22 +52,24 @@ typedef struct s_queue
 
 typedef struct s_simulation
 {
-	int			number_of_coders;
-	int			time_to_burnout;
-	int			time_to_compile;
-	int			time_to_debug;
-	int			time_to_refactor;
-	int			number_of_compiles_required;
-	int			dongle_cooldown;
-	char		*scheduler;
+	int				number_of_coders;
+	int				time_to_burnout;
+	int				time_to_compile;
+	int				time_to_debug;
+	int				time_to_refactor;
+	int				number_of_compiles_required;
+	int				dongle_cooldown;
+	char			*scheduler;
 
-	t_coder		*coders;
-	t_dongle	*dongles;
-	t_queue		queue;
-	int			next_request_order;
-	long		start;
-	pthread_t	monitor;
-	int			stop;
+	t_coder			*coders;
+	t_dongle		*dongles;
+	t_queue			queue;
+	int				next_request_order;
+	long			start;
+	pthread_t		monitor;
+	int				stop;
+	pthread_mutex_t	print_mutex;
+	int				print_stopped;
 }	t_simulation;
 
 int		check_args(t_simulation *sim, char **av, int ac);
@@ -82,7 +84,8 @@ void	join_coders(t_simulation *sim);
 
 long	elapsed_ms(t_simulation *sim);
 long	get_time_ms(void);
-void	request_dongles(t_coder *coder, long now);
+void	log_state(t_coder *coder, char *msg);
+void	request_dongles(t_coder *coder);
 void	release_dongles(t_coder *coder);
 int		is_dongle_free(t_dongle *d, long now);
 int		priority_queue(t_coder *a, t_coder *b);

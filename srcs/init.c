@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:03:08 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/18 11:53:21 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/19 14:56:25 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,10 +68,10 @@ int	init_queue(t_simulation *sim)
 	if (!sim->queue.heap)
 		return (1);
 	if (pthread_mutex_init(&sim->queue.mutex, NULL) != 0)
-	{
-		free(sim->queue.heap);
 		return (1);
-	}
+	if (pthread_mutex_init(&sim->print_mutex, NULL) != 0)
+		return (1);
+	sim->print_stopped = 0;
 	if (pthread_cond_init(&sim->queue.cond, NULL) != 0)
 	{
 		pthread_mutex_destroy(&sim->queue.mutex);

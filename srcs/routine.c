@@ -6,11 +6,22 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:03:55 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/18 11:53:40 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/19 15:40:56 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/codexion.h"
+
+void	log_state(t_coder *coder, char *msg)
+{
+	t_simulation	*sim;
+
+	sim = coder->sim;
+	pthread_mutex_lock(&sim->print_mutex);
+	if (!sim->print_stopped)
+		printf("%ld %d %s\n", elapsed_ms(sim), coder->id, msg);
+	pthread_mutex_unlock(&sim->print_mutex);
+}
 
 int	wait_for_dongles(t_coder *coder)
 {
@@ -36,22 +47,17 @@ int	wait_for_dongles(t_coder *coder)
 
 int	compiling(t_coder *coder)
 {
-	long	now;
 	int		stop;
 
-	now = elapsed_ms(coder->sim);
-	request_dongles(coder, now);
+	request_dongles(coder);
 	queue_remove(&coder->sim->queue, coder);
 	coder->deadline = elapsed_ms(coder->sim) + coder->sim->time_to_burnout;
 	pthread_mutex_unlock(&coder->sim->queue.mutex);
-	now = elapsed_ms(coder->sim);
-	printf("%ld %d is compiling\n", now, coder->id);
+	log_state(coder, "is compiling");
 	usleep(coder->sim->time_to_compile * 1000);
 	pthread_mutex_lock(&coder->sim->queue.mutex);
 	release_dongles(coder);
 	pthread_cond_broadcast(&coder->sim->queue.cond);
-	pthread_mutex_unlock(&coder->sim->queue.mutex);
-	pthread_mutex_lock(&coder->sim->queue.mutex);
 	stop = coder->sim->stop;
 	pthread_mutex_unlock(&coder->sim->queue.mutex);
 	return (stop);
@@ -59,19 +65,16 @@ int	compiling(t_coder *coder)
 
 int	finish_coding(t_coder *coder)
 {
-	long	now;
 	int		stop;
 
-	now = elapsed_ms(coder->sim);
-	printf("%ld %d is debugging\n", now, coder->id);
+	log_state(coder, "is debugging");
 	usleep(coder->sim->time_to_debug * 1000);
 	pthread_mutex_lock(&coder->sim->queue.mutex);
 	stop = coder->sim->stop;
 	pthread_mutex_unlock(&coder->sim->queue.mutex);
 	if (stop)
 		return (1);
-	now = elapsed_ms(coder->sim);
-	printf("%ld %d is refactoring\n", now, coder->id);
+	log_state(coder, "is refactoring");
 	usleep(coder->sim->time_to_refactor * 1000);
 	pthread_mutex_lock(&coder->sim->queue.mutex);
 	stop = coder->sim->stop;

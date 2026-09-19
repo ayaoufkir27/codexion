@@ -118,17 +118,18 @@ The design uses two layers of locking, plus one condition variable:
 
 ### Educational resources
 
+- [Understanding heap sort and priority queues](https://youtu.be/HqPJF2L5h9U?si=ZhA5ux2NOtRcFg0g)
 
-
+- 
 ### Tools
 
-
+- [Excalidraw](https://excalidraw.com/)
 
 ### Use of AI
 
 AI was used in this project to:
 
-- 
+- Identify where possible leaks could happen as well thread races
 - 
 
 All algorithms, implementation decisions, program architecture, and final code were designed, implemented, tested, and validated by me

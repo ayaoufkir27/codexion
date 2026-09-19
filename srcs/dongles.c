@@ -6,22 +6,22 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:01:23 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/18 11:53:14 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/19 15:01:40 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/codexion.h"
 
-void	request_dongles(t_coder *coder, long now)
+void	request_dongles(t_coder *coder)
 {
 	pthread_mutex_lock(&coder->left->mutex);
 	coder->left->available = 0;
 	pthread_mutex_unlock(&coder->left->mutex);
-	printf("%ld %d has taken a dongle\n", now, coder->id);
+	log_state(coder, "has taken a dongle");
 	pthread_mutex_lock(&coder->right->mutex);
 	coder->right->available = 0;
 	pthread_mutex_unlock(&coder->right->mutex);
-	printf("%ld %d has taken a dongle\n", now, coder->id);
+	log_state(coder, "has taken a dongle");
 }
 
 void	release_dongles(t_coder *coder)

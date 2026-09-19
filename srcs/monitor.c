@@ -6,11 +6,20 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 13:25:46 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/18 11:53:32 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/19 14:59:25 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/codexion.h"
+
+void	log_burnout(t_simulation *sim, int id)
+{
+	pthread_mutex_lock(&sim->print_mutex);
+	if (!sim->print_stopped)
+		printf("%ld %d burned out\n", elapsed_ms(sim), id);
+	sim->print_stopped = 1;
+	pthread_mutex_unlock(&sim->print_mutex);
+}
 
 void	track_burnout(t_simulation *sim, long now)
 {
@@ -21,7 +30,7 @@ void	track_burnout(t_simulation *sim, long now)
 	{
 		if (now >= sim->coders[i].deadline && !sim->coders[i].done)
 		{
-			printf("%ld %d burned out\n", now, sim->coders[i].id);
+			log_burnout(sim, sim->coders[i].id);
 			sim->stop = 1;
 			pthread_cond_broadcast(&sim->queue.cond);
 			break ;
