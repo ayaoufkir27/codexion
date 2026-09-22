@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/19 12:38:29 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/19 15:01:51 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/20 19:57:21 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,6 +70,7 @@ typedef struct s_simulation
 	int				stop;
 	pthread_mutex_t	print_mutex;
 	int				print_stopped;
+	int				dongle_count;
 }	t_simulation;
 
 int		check_args(t_simulation *sim, char **av, int ac);

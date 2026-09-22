@@ -110,6 +110,14 @@ The design uses two layers of locking, plus one condition variable:
 
 - **Per-dongle `pthread_mutex_t` (nested, "inner" lock):** each dongle has its own mutex protecting its `available` and `free_at` fields specifically. It is always acquired after `queue.mutex` is already held, never before. A strict, consistent lock ordering that guarantees this nested locking can never itself introduce a deadlock.
 
+- **`print_mutex` (independent lock):** guards all console output and the
+`print_stopped` flag. Every log line (state transitions from coder threads
+and the burnout announcement from the monitor thread) is printed only
+while holding this lock, which both serializes output (so two messages can
+never interleave mid-line) and guarantees the `burned out` line is always
+the last line printed: once `print_stopped` is set, any log call still in
+flight checks the flag under the same lock and silently skips printing.
+
 **Preventing race conditions:** every read or write of shared state (dongle fields, heap contents, deadlines, the stop flag) happens under the appropriate lock, with no exceptions, including loop conditions that read shared state on every iteration, not just the statements inside the loop body. This was verified using ThreadSanitizer (-fsanitize=thread) during development, which caught and helped resolve several unlocked-access races before the final version.
 
 **Thread-safe coder/monitor communication:** the monitor thread and coder threads never communicate directly, they coordinate entirely through shared state protected by `queue.mutex`. The monitor reads each coder's `deadline` under the lock; coders write their new deadline under the same lock immediately after winning dongle acquisition, before ever releasing it. This guarantees the monitor never observes a stale or partially-updated deadline.
@@ -120,7 +128,7 @@ The design uses two layers of locking, plus one condition variable:
 
 - [Understanding heap sort and priority queues](https://youtu.be/HqPJF2L5h9U?si=ZhA5ux2NOtRcFg0g)
 
-- 
+- [Process vs Thread](https://youtu.be/4rLW7zg21gI?si=PVIJnQyhMFfZRvyE)
 ### Tools
 
 - [Excalidraw](https://excalidraw.com/)
@@ -130,6 +138,6 @@ The design uses two layers of locking, plus one condition variable:
 AI was used in this project to:
 
 - Identify where possible leaks could happen as well thread races
-- 
+- Understand the key concepts of the projects such as threads and  
 
 All algorithms, implementation decisions, program architecture, and final code were designed, implemented, tested, and validated by me

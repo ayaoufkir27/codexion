@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:18:34 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/18 11:53:28 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/20 20:08:26 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@ int	main(int ac, char **av)
 {
 	t_simulation	sim;
 
+	memset(&sim, 0, sizeof(t_simulation));
 	if (start_simulation(&sim, ac, av))
 		return (1);
 	sim.start = get_time_ms();

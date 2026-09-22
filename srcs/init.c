@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:03:08 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/19 14:56:25 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/22 12:50:29 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,9 +54,13 @@ int	init_dongles(t_simulation *sim)
 		sim->dongles[i].available = 1;
 		sim->dongles[i].free_at = 0;
 		if (pthread_mutex_init(&sim->dongles[i].mutex, NULL) != 0)
+		{
+			sim->dongle_count = i;
 			return (1);
+		}
 		i++;
 	}
+	sim->dongle_count = num;
 	return (0);
 }
 
@@ -73,11 +77,7 @@ int	init_queue(t_simulation *sim)
 		return (1);
 	sim->print_stopped = 0;
 	if (pthread_cond_init(&sim->queue.cond, NULL) != 0)
-	{
-		pthread_mutex_destroy(&sim->queue.mutex);
-		free(sim->queue.heap);
 		return (1);
-	}
 	return (0);
 }
 
@@ -109,7 +109,7 @@ void	join_coders(t_simulation *sim)
 		i++;
 	}
 	pthread_mutex_lock(&sim->queue.mutex);
-	sim->stop = 1; 
+	sim->stop = 1;
 	pthread_mutex_unlock(&sim->queue.mutex);
 	pthread_join(sim->monitor, NULL);
 }

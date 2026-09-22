@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 13:30:02 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/18 13:43:06 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/20 20:00:04 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,17 +16,25 @@ void	free_simulation(t_simulation *sim)
 {
 	int	i;
 
-	i = 0;
-	while (i < sim->number_of_coders)
+	if (sim->dongles)
 	{
-		pthread_mutex_destroy(&sim->dongles[i].mutex);
-		i++;
+		i = 0;
+		while (i < sim->dongle_count)
+		{
+			pthread_mutex_destroy(&sim->dongles[i].mutex);
+			i++;
+		}
+		free(sim->dongles);
 	}
-	pthread_mutex_destroy(&sim->queue.mutex);
-	pthread_cond_destroy(&sim->queue.cond);
-	free(sim->queue.heap);
-	free(sim->coders);
-	free(sim->dongles);
+	if (sim->coders)
+		free(sim->coders);
+	if (sim->queue.heap)
+	{
+		pthread_mutex_destroy(&sim->queue.mutex);
+		pthread_cond_destroy(&sim->queue.cond);
+		pthread_mutex_destroy(&sim->print_mutex);
+		free(sim->queue.heap);
+	}
 }
 
 long	get_time_ms(void)
@@ -44,8 +52,8 @@ long	elapsed_ms(t_simulation *sim)
 
 void	wait_short(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
-	struct timespec	ts;
 	struct timeval	now;
+	struct timespec	ts;
 
 	gettimeofday(&now, NULL);
 	ts.tv_sec = now.tv_sec;
