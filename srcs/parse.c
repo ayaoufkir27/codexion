@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:03:55 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/18 13:23:23 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/23 17:01:03 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,14 +15,21 @@
 int	is_integer(char *str)
 {
 	int	i;
+	int	digit;
+	int	value;
 
 	i = 0;
-	if (!str[0])
+	value = 0;
+	if (!str[0] || str[i] == '-')
 		return (0);
 	while (str[i])
 	{
 		if (!(str[i] >= '0' && str[i] <= '9'))
 			return (0);
+		digit = str[i];
+		if (value > (2147483647 - digit) / 10)
+			return (0);
+		value = value * 10 + digit;
 		i++;
 	}
 	return (1);
@@ -37,12 +44,7 @@ int	check_args(t_simulation *sim, char **av, int ac)
 	{
 		if (!is_integer(av[i]))
 		{
-			printf("Invalid integer\n");
-			return (-1);
-		}
-		if (atoi(av[i]) < 0)
-		{
-			printf("Arguments must be positive integers\n");
+			printf("Arguments must be positive valid integers\n");
 			return (-1);
 		}
 		i++;

@@ -137,7 +137,7 @@ flight checks the flag under the same lock and silently skips printing.
 
 AI was used in this project to:
 
-- Identify where possible leaks could happen as well thread races
-- Understand the key concepts of the projects such as threads and  
+- Identify possible memory leaks and thread races
+- Explain and clarify concepts such as threads, mutexes, condition variables, and scheduling
 
 All algorithms, implementation decisions, program architecture, and final code were designed, implemented, tested, and validated by me
