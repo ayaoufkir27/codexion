@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/19 12:38:29 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/24 12:25:20 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/24 23:32:04 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,7 +97,6 @@ int		priority_queue(t_coder *a, t_coder *b);
 int		acquire_dongles(t_coder *coder, t_simulation *sim);
 
 void	queue_push(t_queue *queue, t_coder *coder);
-void	heapify_queue(t_queue *queue, int i);
 void	queue_remove(t_queue *queue, t_coder *coder);
 void	*monitor_routine(void *arg);
 void	wait_short(pthread_cond_t *cond, pthread_mutex_t *mutex);

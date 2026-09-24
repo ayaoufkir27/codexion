@@ -1,4 +1,0 @@
-free queue in main
-why reverse availability in releasing the dongles
-parsing is not finished
-next_request_order is unfinished
