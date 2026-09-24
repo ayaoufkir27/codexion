@@ -3,7 +3,7 @@ CC = cc
 CFLAGS = -Wall -Wextra -Werror -pthread
 INCLUDES = includes/codexion.h
 
-SRCS = $(wildcard srcs/*.c)
+SRCS = srcs/dongles.c srcs/heap.c srcs/init.c srcs/main.c srcs/monitor.c srcs/parse.c srcs/routine.c srcs/utils.c
 OBJS = $(SRCS:.c=.o)
 
 all: $(NAME)

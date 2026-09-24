@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 13:30:02 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/20 20:00:04 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/24 12:28:32 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,9 +30,12 @@ void	free_simulation(t_simulation *sim)
 		free(sim->coders);
 	if (sim->queue.heap)
 	{
-		pthread_mutex_destroy(&sim->queue.mutex);
-		pthread_cond_destroy(&sim->queue.cond);
-		pthread_mutex_destroy(&sim->print_mutex);
+		if (sim->queue_mutex_init)
+			pthread_mutex_destroy(&sim->queue.mutex);
+		if (sim->print_mutex_init)
+			pthread_mutex_destroy(&sim->print_mutex);
+		if (sim->cond_init)
+			pthread_cond_destroy(&sim->queue.cond);
 		free(sim->queue.heap);
 	}
 }

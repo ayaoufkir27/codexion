@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:03:08 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/22 12:50:29 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/24 12:27:05 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,6 +66,9 @@ int	init_dongles(t_simulation *sim)
 
 int	init_queue(t_simulation *sim)
 {
+	sim->queue_mutex_init = 0;
+	sim->print_mutex_init = 0;
+	sim->cond_init = 0;
 	sim->queue.capacity = sim->number_of_coders;
 	sim->queue.size = 0;
 	sim->queue.heap = malloc(sizeof(t_coder *) * sim->queue.capacity);
@@ -73,11 +76,14 @@ int	init_queue(t_simulation *sim)
 		return (1);
 	if (pthread_mutex_init(&sim->queue.mutex, NULL) != 0)
 		return (1);
+	sim->queue_mutex_init = 1;
 	if (pthread_mutex_init(&sim->print_mutex, NULL) != 0)
 		return (1);
+	sim->print_mutex_init = 1;
 	sim->print_stopped = 0;
 	if (pthread_cond_init(&sim->queue.cond, NULL) != 0)
 		return (1);
+	sim->cond_init = 1;
 	return (0);
 }
 

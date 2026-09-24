@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:18:34 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/20 20:08:26 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/24 12:29:40 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,10 @@ int	start_simulation(t_simulation *sim, int ac, char **av)
 	if (parse_args(sim, av, ac) == -1)
 		return (1);
 	if (init_dongles(sim))
+	{
+		free_simulation(sim);
 		return (1);
+	}
 	if (init_coders(sim))
 	{
 		free_simulation(sim);
@@ -48,6 +51,5 @@ int	main(int ac, char **av)
 	}
 	join_coders(&sim);
 	free_simulation(&sim);
-	printf("program finished lol\n");
 	return (0);
 }
