@@ -6,7 +6,7 @@
 /*   By: ayoufkir <ayoufkir@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 12:01:23 by ayoufkir          #+#    #+#             */
-/*   Updated: 2026/09/22 12:43:56 by ayoufkir         ###   ########.fr       */
+/*   Updated: 2026/09/25 11:21:23 by ayoufkir         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,8 +65,7 @@ int	acquire_dongles(t_coder *coder, t_simulation *sim)
 	{
 		other = sim->queue.heap[i];
 		if (coder != other
-			&& (coder->left == other->left
-				|| coder->right == other->right || coder->left == other->right
+			&& (coder->left == other->right
 				|| coder->right == other->left)
 			&& is_dongle_free(other->left, now)
 			&& is_dongle_free(other->right, now)
